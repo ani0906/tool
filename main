@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>羽翼下的抉擇：鏡中真相</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: #050508;
+      color: #e0d8d0;
+      font-family: 'Noto Serif TC', serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .horror-title {
+      font-family: 'Creepster', 'Noto Serif TC', cursive;
+      color: #b91c1c;
+      text-shadow: 0 0 10px rgba(185, 28, 28, 0.8), 2px 2px 4px #000;
+      letter-spacing: 2px;
+    }
+
+    .game-viewport {
+      width: 100vw;
+      height: 100vh;
+      max-width: 900px;
+      max-height: 675px;
+      background: #0a0a0f;
+      border: 2px solid #2a1515;
+      box-shadow: 0 0 50px rgba(185, 28, 28, 0.2);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 驚悚氛圍遮罩 */
+    .vignette {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.85) 90%);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .scanline {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 11;
+      opacity: 0.6;
+    }
+
+    /* 畫面容器 */
+    .scene {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      display: none;
+      opacity: 0;
+      transition: opacity 1s ease-in-out, transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .scene.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* 視角推近轉場動畫 */
+    .scene.zoom-forward {
+      transform: scale(2.8);
+      filter: blur(8px) contrast(150%);
+      opacity: 0;
+    }
+
+    /* --- 開始畫面 --- */
+    #startScene {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 20px;
+      background: radial-gradient(circle, #1a0808 0%, #050505 100%);
+    }
+
+    #startScene h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
+
+    #startScene p {
+      font-size: 1.1rem;
+      color: #a3a3a3;
+      margin-bottom: 40px;
+      max-width: 500px;
+      line-height: 1.8;
+    }
+
+    .start-btn {
+      background: #450a0a;
+      color: #f87171;
+      border: 1px solid #991b1b;
+      padding: 14px 40px;
+      font-size: 1.2rem;
+      font-family: 'Noto Serif TC', serif;
+      font-weight: 900;
+      cursor: pointer;
+      border-radius: 4px;
+      box-shadow: 0 0 15px rgba(153, 27, 27, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .start-btn:hover {
+      background: #7f1d1d;
+      color: #fff;
+      box-shadow: 0 0 25px rgba(220, 38, 38, 0.8);
+      transform: scale(1.05);
+    }
+
+    /* --- 場景一：荒野草叢 --- */
+    #grassScene {
+      background: #080c0a;
+    }
+
+    /* SVG 繪製背景 */
+    .svg-background {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+    }
+
+    /* 可互動物件：狗狗雕像 */
+    .interactive-item {
+      position: absolute;
+      cursor: pointer;
+      transition: filter 0.3s;
+    }
+
+    .interactive-item:hover {
+      filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+    }
+
+    /* 發光閃爍項圈提示 */
+    .glowing-collar {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(251, 191, 36, 0.3);
+      border: 2px solid #fbbf24;
+      box-shadow: 0 0 15px #fbbf24, inset 0 0 10px #fbbf24;
+      animation: pulseGlow 1.8s infinite ease-in-out;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% {
+        transform: scale(0.9);
+        opacity: 0.4;
+        box-shadow: 0 0 8px #fbbf24;
+      }
+      50% {
+        transform: scale(1.2);
+        opacity: 0.95;
+        box-shadow: 0 0 22px #f59e0b, 0 0 35px #d97706;
+      }
+    }
+
+    /* 告示牌提示點 */
+    .sign-plate {
+      position: absolute;
+      bottom: 60px;
+      left: 10%;
+      width: 120px;
+      height: 70px;
+      background: #1c1917;
+      border: 1px solid #44403c;
+      color: #a8a29e;
+      font-size: 0.85rem;
+      padding: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      transition: all 0.2s;
+    }
+
+    .sign-plate:hover {
+      border-color: #991b1b;
+      color: #f87171;
+    }
+
+    /* 鑰匙亮點 */
+    .key-item {
+      position: absolute;
+      width: 45px;
+      height: 45px;
+      cursor: pointer;
+      animation: pulseGlow 1.2s infinite;
+      z-index: 6;
+      display: none;
+    }
+
+    /* --- 密碼鎖 Modal --- */
+    .modal-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(5, 5, 8, 0.92);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .lock-card {
+      background: #18181b;
+      border: 2px solid #3f3f46;
+      border-radius: 16px;
+      padding: 30px;
+      width: 340px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 15px rgba(185, 28, 28, 0.3);
+      position: relative;
+    }
+
+    .lock-card h3 {
+      font-size: 1.3rem;
+      color: #f87171;
+      margin-bottom: 8px;
+    }
+
+    .lock-card p.sub {
+      font-size: 0.85rem;
+      color: #a1a1aa;
+      margin-bottom: 24px;
+    }
+
+    /* 密碼滾輪排列 */
+    .dials-container {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .dial-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .dial-btn {
+      background: #27272a;
+      border: 1px solid #52525b;
+      color: #f4f4f5;
+      width: 44px;
+      height: 32px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .dial-btn:hover {
+      background: #3f3f46;
+      color: #fbbf24;
+    }
+
+    .dial-display {
+      width: 52px;
+      height: 60px;
+      background: #09090b;
+      border: 2px solid #71717a;
+      border-radius: 8px;
+      margin: 8px 0;
+      font-size: 2.2rem;
+      font-family: 'Creepster', cursive;
+      color: #fbbf24;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: #71717a;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .close-btn:hover { color: #f87171; }
+
+    /* --- 場景二：鏡子與草鴞倒影 --- */
+    #mirrorScene {
+      background: #050505;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .mirror-frame {
+      width: 280px;
+      height: 380px;
+      border: 12px solid #292524;
+      border-radius: 140px 140px 20px 20px;
+      background: radial-gradient(circle, #1c1917 0%, #0c0a09 100%);
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 0, 0, 0.9);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 24px;
+      cursor: pointer;
+    }
+
+    .mirror-glass {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* 鏡中草鴞影象 */
+    .owl-reflection {
+      width: 220px;
+      height: 220px;
+      opacity: 0;
+      filter: blur(4px) grayscale(40%);
+      transition: opacity 2.5s ease-in-out, filter 2.5s ease-in-out;
+    }
+
+    .owl-reflection.revealed {
+      opacity: 0.95;
+      filter: blur(0px) drop-shadow(0 0 15px rgba(245, 158, 11, 0.6));
+    }
+
+    /* 鏡面裂痕效果 */
+    .crack-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .story-text {
+      max-width: 550px;
+      text-align: center;
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: #d4d4d8;
+      min-height: 80px;
+      padding: 0 20px;
+    }
+
+    .story-text span.highlight {
+      color: #f59e0b;
+      font-weight: 900;
+      font-size: 1.3rem;
+    }
+
+    /* 對話/提示框（底部） */
+    .dialog-box {
+      position: absolute;
+      bottom: 20px;
+      left: 5%;
+      width: 90%;
+      background: rgba(15, 15, 20, 0.9);
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-size: 0.95rem;
+      color: #e4e4e7;
+      z-index: 15;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-viewport">
+    <div class="vignette"></div>
+    <div class="scanline"></div>
+
+    <!-- ===== 1. 開始畫面 ===== -->
+    <div id="startScene" class="scene active">
+      <h1 class="horror-title">羽翼下的抉擇：鏡中真相</h1>
+      <p>荒野的風聲中傳來低語。<br>解開隱藏在廢墟中的鎖扣，揭開映照在鏡面裡的靈魂真相...</p>
+      <button class="start-btn" onclick="initGame()">進入荒野</button>
+    </div>
+
+    <!-- ===== 2. 場景一：白芒草荒野與狗狗雕像 ===== -->
+    <div id="grassScene" class="scene">
+      <svg class="svg-background" viewBox="0 0 800 600" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#050811"/>
+            <stop offset="100%" stop-color="#111827"/>
+          </linearGradient>
+          <linearGradient id="grassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#1f2937"/>
+            <stop offset="100%" stop-color="#06090e"/>
+          </linearGradient>
+        </defs>
+
+        <!-- 夜空與月亮 -->
+        <rect width="800" height="600" fill="url(#skyGrad)"/>
+        <circle cx="680" cy="120" r="45" fill="#fef3c7" opacity="0.2"/>
+        <circle cx="680" cy="120" r="35" fill="#fffbeb" opacity="0.8"/>
+
+        <!-- 遠景山丘 -->
+        <path d="M 0 420 Q 200 350 400 410 T 800 380 L 800 600 L 0 600 Z" fill="#0f172a"/>
+
+        <!-- 白芒草叢 (背景) -->
+        <g stroke="#334155" stroke-width="2" opacity="0.7">
+          <path d="M 50 600 Q 70 450 120 380 M 60 600 Q 90 440 140 370"/>
+          <path d="M 200 600 Q 220 460 260 390 M 210 600 Q 240 430 290 380"/>
+          <path d="M 550 600 Q 570 450 620 360 M 570 600 Q 600 440 650 370"/>
+          <path d="M 700 600 Q 720 470 760 400"/>
+        </g>
+
+        <!-- 狗雕像 (完整) -->
+        <g id="dogStatueFull">
+          <!-- 雕像基座 -->
+          <rect x="340" y="420" width="120" height="40" fill="#334155" rx="4"/>
+          <!-- 狗身輪廓 -->
+          <path d="M 370 420 L 370 330 Q 370 290 400 280 Q 420 280 430 310 L 430 420 Z" fill="#475569"/>
+          <!-- 狗頭 -->
+          <path d="M 380 290 Q 370 250 400 240 Q 430 250 420 290 Z" fill="#475569"/>
+          <!-- 尖耳朵 -->
+          <polygon points="380,260 370,220 395,250" fill="#334155"/>
+          <polygon points="420,260 430,220 405,250" fill="#334155"/>
+        </g>
+
+        <!-- 狗雕像 (碎裂狀態 - 預設隱藏) -->
+        <g id="dogStatueBroken" style="display: none;">
+          <rect x="340" y="440" width="120" height="20" fill="#1e293b" rx="2"/>
+          <!-- 碎石塊塊 -->
+          <polygon points="350,440 370,410 390,440" fill="#334155"/>
+          <polygon points="385,440 405,420 425,440" fill="#475569"/>
+          <polygon points="415,440 435,405 450,440" fill="#1e293b"/>
+          <polygon points="360,420 380,395 395,425" fill="#475569"/>
+        </g>
+
+        <!-- 近景白芒草 (前景) -->
+        <g stroke="#64748b" stroke-width="3" opacity="0.9">
+          <path d="M 10 600 Q 40 410 90 320 M 30 600 Q 80 400 130 310"/>
+          <path d="M 150 600 Q 170 430 210 350"/>
+          <path d="M 620 600 Q 650 420 710 310 M 650 600 Q 690 410 750 330"/>
+        </g>
+      </svg>
+
+      <!-- 項圈閃爍發光點 (覆蓋在狗狗頸部 400, 290 附近) -->
+      <div id="collarGlow" class="glowing-collar" style="top: 45%; left: 49%;" onclick="openLockModal()"></div>
+
+      <!-- 告示牌 -->
+      <div class="sign-plate" onclick="showSignHint()">
+        📜 【殘破告示】<br>
+        <span style="font-size:0.75rem; color:#78716c;">點擊閱讀告示內容...</span>
+      </div>
+
+      <!-- 鑰匙 (粉碎後出現) -->
+      <div id="keyItem" class="key-item" style="top: 61%; left: 48.5%;" onclick="collectKeyAndTransition()">
+        <svg viewBox="0 0 24 24" fill="#fbbf24">
+          <path d="M7 14C5.9 14 5 13.1 5 12C5 10.9 5.9 10 7 10C8.1 10 9 10.9 9 12C9 13.1 8.1 14 7 14ZM12.6 10C11.8 7.6 9.6 6 7 6C3.7 6 1 8.7 1 12C1 15.3 3.7 18 7 18C9.6 18 11.8 16.4 12.6 14H16V18H20V14H23V10H12.6Z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ===== 3. 密碼鎖 Modal ===== -->
+    <div id="lockModal" class="modal-overlay">
+      <div class="lock-card">
+        <button class="close-btn" onclick="closeLockModal()">&times;</button>
+        <h3 class="horror-title">三位數老舊密碼鎖</h3>
+        <p class="sub">轉動金屬數字輪，解開狗狗項圈上的枷鎖</p>
+
+        <div class="dials-container">
+          <div class="dial-group">
+            <button class="dial-btn" onclick="changeDigit(0, 1)">▲</button>
+            <div id="digit0" class="dial-display">0</div>
+            <button class="dial-btn" onclick="changeDigit(0, -1)">▼</button>
+          </div>
+          <div class="dial-group">
+            <button class="dial-btn" onclick="changeDigit(1, 1)">▲</button>
+            <div id="digit1" class="dial-display">0</div>
+            <button class="dial-btn" onclick="changeDigit(1, -1)">▼</button>
+          </div>
+          <div class="dial-group">
+            <button class="dial-btn" onclick="changeDigit(2, 1)">▲</button>
+            <div id="digit2" class="dial-display">0</div>
+            <button class="dial-btn" onclick="changeDigit(2, -1)">▼</button>
+          </div>
+        </div>
+
+        <p id="lockStatusText" style="font-size:0.85rem; color:#71717a;">輸入正確的 3 位數密碼組合...</p>
+      </div>
+    </div>
+
+    <!-- ===== 4. 場景二：鏡子與草鴞倒影 ===== -->
+    <div id="mirrorScene" class="scene">
+      <div class="mirror-frame" onclick="triggerMirrorReveal()">
+        <div class="mirror-glass">
+          <!-- 草鴞倒影 SVG -->
+          <svg id="owlSvg" class="owl-reflection" viewBox="0 0 200 200">
+            <!-- 草鴞心形面盤與頭部 -->
+            <path d="M 100 30 C 60 30, 30 70, 30 110 C 30 150, 70 180, 100 180 C 130 180, 170 150, 170 110 C 170 70, 140 30, 100 30 Z" fill="#d97706" opacity="0.8"/>
+            <!-- 經典心形面具 (草鴞特徵) -->
+            <path d="M 100 55 C 80 40, 50 60, 50 95 C 50 130, 85 155, 100 165 C 115 155, 150 130, 150 95 C 150 60, 120 40, 100 55 Z" fill="#fef3c7"/>
+            <!-- 眼睛 (神秘琥珀光) -->
+            <circle cx="75" cy="95" r="14" fill="#000"/>
+            <circle cx="75" cy="95" r="12" fill="#b45309"/>
+            <circle cx="75" cy="95" r="5" fill="#000"/>
+            <circle cx="73" cy="92" r="2" fill="#fff"/>
+
+            <circle cx="125" cy="95" r="14" fill="#000"/>
+            <circle cx="125" cy="95" r="12" fill="#b45309"/>
+            <circle cx="125" cy="95" r="5" fill="#000"/>
+            <circle cx="123" cy="92" r="2" fill="#fff"/>
+
+            <!-- 喙 -->
+            <polygon points="100,105 94,125 106,125" fill="#78350f"/>
+          </svg>
+
+          <!-- 鏡面裂痕 overlay -->
+          <svg class="crack-overlay" viewBox="0 0 200 300">
+            <path d="M 20 0 L 80 120 L 140 180 M 80 120 L 40 220 M 140 180 L 190 280" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="story-text" id="storyText">
+        你佇立在古老的鏡子前，抬起頭向鏡中望去...<br>
+        <span style="font-size:0.85rem; color:#71717a;">（點擊鏡子以凝視倒影）</span>
+      </div>
+
+      <button id="restartBtn" class="start-btn" style="display:none; margin-top: 20px; font-size: 1rem; padding: 10px 24px;" onclick="location.reload()">重新進入輪迴</button>
+    </div>
+
+    <!-- 全局對話/提示框 -->
+    <div id="dialogBox" class="dialog-box">
+      夜風呼嘯著... 尋找這片荒野中的蛛絲馬跡。
+    </div>
+  </div>
+
+  <script>
+    // --- Web Audio 音效合成器 (免外部音訊檔) ---
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'click') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'unlock') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+        osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+      } else if (type === 'shatter') {
+        // 白雜訊模擬碎裂聲
+        const bufferSize = audioCtx.sampleRate * 0.4;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 1000;
+        
+        noise.connect(noiseFilter);
+        noiseFilter.connect(gain);
+        gain.gain.setValueAtTime(0.6, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        noise.start(now);
+      } else if (type === 'eerie') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 2.0);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 2.0);
+        osc.start(now);
+        osc.stop(now + 2.0);
+      }
+    }
+
+    // --- 遊戲狀態管理 ---
+    const digits = [0, 0, 0];
+    const targetCode = [1, 5, 8]; // 正確密碼：158
+    let isUnlocked = false;
+    let isKeyCollected = false;
+
+    function setDialog(text) {
+      document.getElementById('dialogBox').innerText = text;
+    }
+
+    function initGame() {
+      initAudio();
+      playSound('click');
+      document.getElementById('startScene').classList.remove('active');
+      document.getElementById('grassScene').classList.add('active');
+      setDialog("你來到了深夜的草叢荒野。前方聳立著一座詭異的狗雕像，頸部似乎閃爍著微光...");
+    }
+
+    function showSignHint() {
+      playSound('click');
+      setDialog("告示牌上記錄著悲傷的數據：「全台僅存野外配對數量：158 對...」");
+    }
+
+    function openLockModal() {
+      if (isUnlocked) return;
+      playSound('click');
+      document.getElementById('lockModal').classList.add('active');
+      setDialog("你靠近了狗狗雕像，項圈上鎖著密碼鎖。");
+    }
+
+    function closeLockModal() {
+      playSound('click');
+      document.getElementById('lockModal').classList.remove('active');
+    }
+
+    function changeDigit(index, delta) {
+      playSound('click');
+      digits[index] = (digits[index] + delta + 10) % 10;
+      document.getElementById(`digit${index}`).innerText = digits[index];
+      checkLockCode();
+    }
+
+    function checkLockCode() {
+      if (digits[0] === targetCode[0] && digits[1] === targetCode[1] && digits[2] === targetCode[2]) {
+        isUnlocked = true;
+        playSound('unlock');
+        document.getElementById('lockStatusText').innerText = "🔓 喀嗒！密碼正確，項圈鬆開了！";
+        document.getElementById('lockStatusText').style.color = "#4ade80";
+
+        setTimeout(() => {
+          closeLockModal();
+          triggerStatueShatter();
+        }, 1200);
+      }
+    }
+
+    function triggerStatueShatter() {
+      playSound('shatter');
+      document.getElementById('collarGlow').style.display = 'none';
+      document.getElementById('dogStatueFull').style.display = 'none';
+      document.getElementById('dogStatueBroken').style.display = 'block';
+      document.getElementById('keyItem').style.display = 'block';
+
+      setDialog("💥 隨著密碼解開，狗雕像瞬間粉碎炸裂！碎石堆中露出一把【銹蝕的鑰匙】。");
+    }
+
+    function collectKeyAndTransition() {
+      if (isKeyCollected) return;
+      isKeyCollected = true;
+      playSound('click');
+      document.getElementById('keyItem').style.display = 'none';
+      setDialog("🔑 你拾起了【銹蝕的鑰匙】... 突如其來的一陣暈眩感，引導著你往前走去！");
+
+      // 一幀一幀推近動畫轉場
+      const grassScene = document.getElementById('grassScene');
+      grassScene.classList.add('zoom-forward');
+
+      setTimeout(() => {
+        grassScene.classList.remove('active', 'zoom-forward');
+        document.getElementById('mirrorScene').classList.add('active');
+        playSound('eerie');
+        setDialog("穿過迷霧，眼前出現了一面老舊的鏡子...");
+      }, 1500);
+    }
+
+    function triggerMirrorReveal() {
+      playSound('eerie');
+      const owlSvg = document.getElementById('owlSvg');
+      owlSvg.classList.add('revealed');
+
+      document.getElementById('storyText').innerHTML = `
+        鏡子裡映照出的，不是人類的模樣...<br><br>
+        而是一隻帶有心形面具、眼神深邃無奈的<span class="highlight">草鴞</span>。<br>
+        全台僅存約 <span class="highlight">158 對</span> 繁衍個體，你正是其中之一。
+      `;
+
+      setDialog("真相揭曉：你不是旁觀的探索者，你就是在這片土地上苦苦求生的草鴞。");
+      document.getElementById('restartBtn').style.display = 'inline-block';
+    }
+  </script>
+</body>
+</html>
